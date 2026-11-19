@@ -1,0 +1,376 @@
+<html>
+        <head><title>Downloaded HTML</title></head>
+        <body>
+            <pre style="white-space: pre-wrap; word-wrap: break-word;"><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DINO RUNNER</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      background-color: #f7f7f7;
+      color: #535353;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+    h1 {
+      font-size: 2rem;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+    .instructions {
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    #game {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      height: 250px;
+      background-color: #ffffff;
+      border: 2px solid #535353;
+      overflow: hidden;
+    }
+    #ground {
+      position: absolute;
+      bottom: 28px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: #535353;
+    }
+    #pause-btn {
+      position: absolute;
+      top: 12px;
+      left: 16px;
+      background-color: #ffffff;
+      color: #535353;
+      border: 2px solid #535353;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: bold;
+      font-size: 13px;
+      padding: 4px 10px;
+      cursor: pointer;
+      z-index: 20;
+      display: none;
+    }
+    #pause-btn:hover {
+      background-color: #535353;
+      color: #ffffff;
+    }
+    #score-board {
+      position: absolute;
+      top: 14px;
+      right: 18px;
+      font-weight: bold;
+      font-size: 16px;
+      z-index: 10;
+    }
+    #message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-weight: bold;
+      font-size: 18px;
+      line-height: 1.5;
+      z-index: 10;
+      width: 90%;
+    }
+    #dino {
+      position: absolute;
+      left: 50px;
+      bottom: 30px;
+      width: 36px;
+      height: 44px;
+      background-color: #535353;
+      border-radius: 4px 4px 0 0;
+    }
+    #dino::after {
+      content: '';
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 5px;
+      height: 5px;
+      background-color: #ffffff;
+    }
+    #dino.ducking {
+      width: 50px;
+      height: 24px;
+    }
+    .cactus {
+      position: absolute;
+      bottom: 30px;
+      background-color: #535353;
+      border-radius: 3px 3px 0 0;
+    }
+    .bird {
+      position: absolute;
+      width: 22px;
+      height: 12px;
+      background-color: #535353;
+      border-radius: 4px;
+    }
+    .bird::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: 4px;
+      width: 5px;
+      height: 4px;
+      background-color: #535353;
+    }
+    .bird::after {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: -6px;
+      width: 6px;
+      height: 6px;
+      background-color: #535353;
+      animation: flap 0.25s infinite alternate;
+    }
+    /* Freeze wing animation while paused */
+    #game.paused .bird::after {
+      animation-play-state: paused;
+    }
+    @keyframes flap {
+      from { top: -6px; }
+      to { top: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>DINO RUNNER</h1>
+  <p class="instructions">Press <strong>SPACE</strong> or <strong>UP</strong> to Jump &bull; <strong>DOWN</strong> to Duck &bull; <strong>P</strong> or <strong>ESC</strong> to Pause</p>
+
+  <div id="game">
+    <button id="pause-btn" type="button">PAUSE</button>
+    <div id="score-board">HI 00000  00000</div>
+    <div id="message">PRESS SPACE OR CLICK / TAP TO START</div>
+    <div id="dino"></div>
+    <div id="ground"></div>
+  </div>
+
+  <script>
+    (function() {
+      const gameEl = document.getElementById('game');
+      const dinoEl = document.getElementById('dino');
+      const scoreEl = document.getElementById('score-board');
+      const messageEl = document.getElementById('message');
+      const pauseBtn = document.getElementById('pause-btn');
+
+      let isPlaying = false;
+      let isPaused = false;
+      let score = 0;
+      let highScore = 0;
+      let gameSpeed = 6;
+      let frameCount = 0;
+      let spawnTimer = 0;
+      let loopId = null;
+
+      const groundLevel = 30;
+      let dinoBottom = groundLevel;
+      let dinoVelocity = 0;
+      const gravity = 0.65;
+      const jumpPower = 12;
+      let isGrounded = true;
+      let isDucking = false;
+
+      let obstacles = new Array();
+
+      function updateScoreDisplay() {
+        const s = String(Math.floor(score)).padStart(5, '0');
+        const h = String(Math.floor(highScore)).padStart(5, '0');
+        scoreEl.textContent = 'HI ' + h + '  ' + s;
+      }
+
+      function jump() {
+        if (isGrounded && !isDucking) {
+          dinoVelocity = jumpPower;
+          isGrounded = false;
+        }
+      }
+
+      function setDuck(state) {
+        isDucking = state;
+        if (isDucking && isGrounded) {
+          dinoEl.classList.add('ducking');
+        } else {
+          dinoEl.classList.remove('ducking');
+        }
+      }
+
+      function togglePause() {
+        if (!isPlaying) return;
+
+        isPaused = !isPaused;
+
+        if (isPaused) {
+          if (loopId) cancelAnimationFrame(loopId);
+          gameEl.classList.add('paused');
+          pauseBtn.textContent = 'RESUME';
+          messageEl.innerHTML = 'P A U S E D<br><span style="font-size:14px;font-weight:normal;">Press P, ESC, or Click RESUME</span>';
+          messageEl.style.display = 'block';
+        } else {
+          gameEl.classList.remove('paused');
+          pauseBtn.textContent = 'PAUSE';
+          messageEl.style.display = 'none';
+          gameLoop();
+        }
+      }
+
+      function spawnObstacle() {
+        const isBird = Math.random() < 0.45;
+        const el = document.createElement('div');
+        const gameWidth = gameEl.clientWidth || 800;
+
+        if (isBird) {
+          el.className = 'bird';
+          const heights = new Array(65, 95, 125);
+          const idx = Math.floor(Math.random() * heights.length);
+          const baseBottom = heights.at(idx);
+          el.style.left = gameWidth + 'px';
+          el.style.bottom = baseBottom + 'px';
+          gameEl.appendChild(el);
+
+          obstacles.push({
+            type: 'bird',
+            el: el,
+            x: gameWidth,
+            bottom: baseBottom,
+            baseBottom: baseBottom,
+            width: 22,
+            height: 12,
+            speedBonus: 2.2 + Math.random() * 1.5,
+            waveOffset: Math.random() * 10
+          });
+        } else {
+          el.className = 'cactus';
+          const width = Math.random() < 0.5 ? 18 : 30;
+          const height = Math.random() < 0.5 ? 36 : 48;
+          el.style.width = width + 'px';
+          el.style.height = height + 'px';
+          el.style.left = gameWidth + 'px';
+          gameEl.appendChild(el);
+
+          obstacles.push({
+            type: 'cactus',
+            el: el,
+            x: gameWidth,
+            bottom: groundLevel,
+            width: width,
+            height: height,
+            speedBonus: 0
+          });
+        }
+      }
+
+      function checkCollision(obs) {
+        const dinoLeft = 50;
+        const dinoWidth = isDucking && isGrounded ? 50 : 36;
+        const dinoHeight = isDucking && isGrounded ? 24 : 44;
+        const pad = 4;
+
+        const overlapX = (dinoLeft + dinoWidth - pad) > (obs.x + pad) &&
+                         (dinoLeft + pad) < (obs.x + obs.width - pad);
+        const overlapY = (dinoBottom + dinoHeight - pad) > (obs.bottom + pad) &&
+                         (dinoBottom + pad) < (obs.bottom + obs.height - pad);
+
+        return overlapX && overlapY;
+      }
+
+      function endGame() {
+        isPlaying = false;
+        isPaused = false;
+        if (loopId) cancelAnimationFrame(loopId);
+        gameEl.classList.remove('paused');
+        pauseBtn.style.display = 'none';
+
+        if (score > highScore) {
+          highScore = Math.floor(score);
+          updateScoreDisplay();
+        }
+        messageEl.innerHTML = 'G A M E &nbsp; O V E R<br><span style="font-size:14px;font-weight:normal;">Press SPACE or Click / Tap to Restart</span>';
+        messageEl.style.display = 'block';
+      }
+
+      function resetGame() {
+        if (loopId) cancelAnimationFrame(loopId);
+        obstacles.forEach(function(obs) { obs.el.remove(); });
+        obstacles = new Array();
+
+        score = 0;
+        gameSpeed = 6;
+        spawnTimer = 25;
+        frameCount = 0;
+        dinoBottom = groundLevel;
+        dinoVelocity = 0;
+        isGrounded = true;
+        setDuck(false);
+        dinoEl.style.bottom = dinoBottom + 'px';
+
+        isPlaying = true;
+        isPaused = false;
+        gameEl.classList.remove('paused');
+        pauseBtn.textContent = 'PAUSE';
+        pauseBtn.style.display = 'block';
+        messageEl.style.display = 'none';
+        updateScoreDisplay();
+        gameLoop();
+      }
+
+      function gameLoop() {
+        if (!isPlaying || isPaused) return;
+
+        frameCount++;
+        score += 0.15;
+        gameSpeed += 0.001;
+        updateScoreDisplay();
+
+        if (!isGrounded) {
+          dinoBottom += dinoVelocity;
+          dinoVelocity -= gravity;
+          if (dinoBottom <= groundLevel) {
+            dinoBottom = groundLevel;
+            dinoVelocity = 0;
+            isGrounded = true;
+            if (isDucking) dinoEl.classList.add('ducking');
+          }
+          dinoEl.style.bottom = dinoBottom + 'px';
+        }
+
+        spawnTimer--;
+        if (spawnTimer <= 0) {
+          spawnObstacle();
+          spawnTimer = Math.max(45, 95 - gameSpeed * 2.5 + Math.random() * 35);
+        }
+
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          const obs = obstacles.at(i);
+          obs.x -= (gameSpeed + obs.speedBonus);
+
+          if (obs.type === 'bird') {
+
+</pre>
+        </body>
+    </html>

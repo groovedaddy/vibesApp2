@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sudoku Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+
+    h1 {
+      margin-bottom: 15px;
+      font-size: 2rem;
+      color: #1a202c;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    select, button {
+      padding: 8px 14px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #cbd5e0;
+      background-color: #fff;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    button {
+      background-color: #3182ce;
+      color: #fff;
+      border: none;
+      font-weight: 500;
+    }
+
+    button:hover {
+      background-color: #2b6cb0;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button.secondary {
+      background-color: #718096;
+    }
+
+    button.secondary:hover {
+      background-color: #4a5568;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(9, 45px);
+      grid-template-rows: repeat(9, 45px);
+      border: 3px solid #1a202c;
+      background-color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .cell {
+      width: 45px;
+      height: 45px;
+      text-align: center;
+      font-size: 1.4rem;
+      border: 1px solid #cbd5e0;
+      outline: none;
+      color: #2b6cb0;
+      background-color: #fff;
+    }
+
+    .cell:focus {
+      background-color: #ebf8ff;
+    }
+
+    .cell.given {
+      font-weight: bold;
+      color: #1a202c;
+      background-color: #edf2f7;
+    }
+
+    .cell.error {
+      background-color: #fed7d7;
+      color: #c53030;
+    }
+
+    .cell.valid-check {
+      background-color: #c6f6d5;
+    }
+
+    /* Thick borders for 3x3 subgrids */
+    .cell:nth-child(3n) {
+      border-right: 2px solid #1a202c;
+    }
+    .cell:nth-child(9n) {
+      border-right: none;
+    }
+    .row-border {
+      border-bottom: 2px solid #1a202c;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 1.1rem;
+      font-weight: 500;
+      min-height: 24px;
+    }
+
+    @media (max-width: 450px) {
+      #board {
+        grid-template-columns: repeat(9, 36px);
+        grid-template-rows: repeat(9, 36px);
+      }
+      .cell {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<style id="vibe-apps-navigation">#vibe-back-link{position:fixed!important;top:12px!important;left:12px!important;z-index:2147483647!important;display:inline-flex!important;align-items:center!important;gap:8px!important;padding:10px 15px!important;border-radius:999px!important;background:#12243d!important;color:#fff!important;font:600 14px/1.2 system-ui,-apple-system,sans-serif!important;text-decoration:none!important;box-shadow:0 4px 18px #0006!important;border:1px solid #ffffff55!important}#vibe-back-link:hover,#vibe-back-link:focus{background:#255b9c!important;outline:2px solid #fff!important;outline-offset:2px!important}@media(max-width:600px){#vibe-back-link{top:8px!important;left:8px!important;padding:8px 11px!important;font-size:12px!important}}</style>
+<a id="vibe-back-link" href="index.html" aria-label="Back to Vibe Apps 1">← Back to Vibe Apps 1</a>
+
+
+  <h1>Sudoku</h1>
+
+  <div class="controls">
+    <select id="difficulty">
+      <option value="35">Easy</option>
+      <option value="45" selected>Medium</option>
+      <option value="55">Hard</option>
+    </select>
+    <button onclick="newGame()">New Game</button>
+    <button class="secondary" onclick="checkBoard()">Check</button>
+    <button class="secondary" onclick="solveGame()">Solve</button>
+  </div>
+
+  <div id="board"></div>
+  <div id="status"></div>
+
+  <script>
+    const boardElement = document.getElementById('board');
+    const statusElement = document.getElementById('status');
+    let solution = [];
+    let puzzle = [];
+
+    function createEmptyGrid() {
+      return Array.from({ length: 9 }, () => Array(9).fill(0));
+    }
+
+    function isValid(grid, row, col, num) {
+      for (let i = 0; i < 9; i++) {
+        if (grid[row][i] === num || grid[i][col] === num) return false;
+      }
+      const startRow = Math.floor(row / 3) * 3;
+      const startCol = Math.floor(col / 3) * 3;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          if (grid[startRow + r][startCol + c] === num) return false;
+        }
+      }
+      return true;
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function fillGrid(grid) {
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          if (grid[row][col] === 0) {
+            const numbers = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+            for (let num of numbers) {
+              if (isValid(grid, row, col, num)) {
+                grid[row][col] = num;
+                if (fillGrid(grid)) return true;
+                grid[row][col] = 0;
+              }
+            }
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function generatePuzzle(emptyCells) {
+      const fullGrid = createEmptyGrid();
+      fillGrid(fullGrid);
+      solution = fullGrid.map(row => [...row]);
+      puzzle = fullGrid.map(row => [...row]);
+
+      let removed = 0;
+      while (removed < emptyCells) {
+        const row = Math.floor(Math.random() * 9);
+        const col = Math.floor(Math.random() * 9);
+        if (puzzle[row][col] !== 0) {
+          puzzle[row][col] = 0;
+          removed++;
+        }
+      }
+    }
+
+    function renderBoard() {
+      boardElement.innerHTML = '';
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.maxLength = 1;
+          input.classList.add('cell');
+          input.dataset.row = r;
+          input.dataset.col = c;
+
+          if (r === 2 || r === 5) {
+            input.classList.add('row-border');
+          }
+
+          if (puzzle[r][c] !== 0) {
+            input.value = puzzle[r][c];
+            input.readOnly = true;
+            input.classList.add('given');
+          } else {
+            input.addEventListener('input', (e) => {
+              const val = e.target.value;
+              e.target.classList.remove('error', 'valid-check');
+              if (!/^[1-9]$/.test(val)) {
+                e.target.value = '';
+              }
+            });
+          }
+
+          boardElement.appendChild(input);
+        }
+      }
+    }
+
+    function newGame() {
+      const emptyCells = parseInt(document.getElementById('difficulty').value, 10);
+      statusElement.textContent = '';
+      generatePuzzle(emptyCells);
+      renderBoard();
+    }
+
+    function checkBoard() {
+      const cells = document.querySelectorAll('.cell');
+      let allFilled = true;
+      let hasErrors = false;
+
+      cells.forEach(cell => {
+        if (cell.classList.contains('given')) return;
+        const r = parseInt(cell.dataset.row, 10);
+        const c = parseInt(cell.dataset.col, 10);
+        const val = parseInt(cell.value, 10);
+
+        cell.classList.remove('error', 'valid-check');
+
+        if (!val) {
+          allFilled = false;
+        } else if (val !== solution[r][c]) {
+          cell.classList.add('error');
+          hasErrors = true;
+        } else {
+          cell.classList.add('valid-check');
+        }
+      });
+
+      if (hasErrors) {
+        statusElement.textContent = 'Some numbers are incorrect (highlighted in red).';
+        statusElement.style.color = '#c53030';
+      } else if (!allFilled) {
+        statusElement.textContent = 'Looking good so far! Keep going.';
+        statusElement.style.color = '#2b6cb0';
+      } else {
+        statusElement.textContent = 'Congratulations! You solved the Sudoku!';
+        statusElement.style.color = '#2f855a';
+      }
+    }
+
+    function solveGame() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach(cell => {
+        const r = parseInt(cell.dataset.row, 10);
+        const c = parseInt(cell.dataset.col, 10);
+        cell.value = solution[r][c];
+        cell.classList.remove('error', 'valid-check');
+      });
+      statusElement.textContent = 'Puzzle solved.';
+      statusElement.style.color = '#4a5568';
+    }
+
+    // Start initial game
+    newGame();
+  </script>
+</body>
+</html>

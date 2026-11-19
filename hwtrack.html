@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HW Tracker</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+      margin: 0;
+    }
+
+    .container {
+      background: #1e1e1e;
+      width: 100%;
+      max-width: 500px;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    h1 {
+      text-align: center;
+      color: #ffffff;
+      margin-top: 0;
+      font-size: 24px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    input[type="text"] {
+      padding: 10px 14px;
+      background-color: #2c2c2c;
+      color: #ffffff;
+      border: 1px solid #444444;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    #hwInput {
+      flex: 2;
+      min-width: 160px;
+    }
+
+    #dueInput {
+      flex: 1;
+      min-width: 110px;
+    }
+
+    input[type="text"]::placeholder {
+      color: #888888;
+    }
+
+    input[type="text"]:focus {
+      border-color: #add8e6;
+    }
+
+    button {
+      background-color: #add8e6; /* Light Blue */
+      color: #0f293d;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #8ecae6;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border-bottom: 1px solid #333333;
+      gap: 12px;
+      cursor: grab;
+      border-radius: 6px;
+      max-height: 120px;
+      overflow: hidden;
+      transition: 
+        opacity 0.65s ease,
+        transform 0.65s ease,
+        max-height 0.55s ease 0.25s,
+        padding 0.55s ease 0.25s,
+        background-color 0.35s ease;
+    }
+
+    li:active {
+      cursor: grabbing;
+    }
+
+    li:last-child {
+      border-bottom: none;
+    }
+
+    li.dragging {
+      opacity: 0.4;
+      background-color: #2a2a2a;
+    }
+
+    li.drag-over {
+      border-top: 2px solid #add8e6;
+    }
+
+    /* New Slower Completion Animation */
+    li.removing {
+      background-color: rgba(173, 216, 230, 0.16);
+      opacity: 0;
+      transform: scale(0.94);
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      border-bottom-color: transparent;
+    }
+
+    li.removing .task-text,
+    li.removing .due-text {
+      text-decoration: line-through;
+      color: #888888;
+    }
+
+    .task-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: #add8e6;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.25s ease;
+    }
+
+    li.removing .task-checkbox {
+      transform: scale(1.2);
+    }
+
+    .task-info {
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .task-text {
+      display: block;
+      font-size: 16px;
+      color: #f0f0f0;
+      transition: color 0.3s ease;
+    }
+
+    .due-text {
+      display: block;
+      font-size: 13px;
+      color: #add8e6;
+      margin-top: 4px;
+      transition: color 0.3s ease;
+    }
+
+    .delete-btn {
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+<style id="vibe-apps-navigation">#vibe-back-link{position:fixed!important;top:12px!important;left:12px!important;z-index:2147483647!important;display:inline-flex!important;align-items:center!important;gap:8px!important;padding:10px 15px!important;border-radius:999px!important;background:#12243d!important;color:#fff!important;font:600 14px/1.2 system-ui,-apple-system,sans-serif!important;text-decoration:none!important;box-shadow:0 4px 18px #0006!important;border:1px solid #ffffff55!important}#vibe-back-link:hover,#vibe-back-link:focus{background:#255b9c!important;outline:2px solid #fff!important;outline-offset:2px!important}@media(max-width:600px){#vibe-back-link{top:8px!important;left:8px!important;padding:8px 11px!important;font-size:12px!important}}</style>
+<a id="vibe-back-link" href="index.html" aria-label="Back to Vibe Apps 1">← Back to Vibe Apps 1</a>
+
+
+  <div class="container">
+    <h1>HW Tracker 📓</h1>
+    
+    <div class="input-group">
+      <input type="text" id="hwInput" placeholder="Enter homework...">
+      <input type="text" id="dueInput" placeholder="Due when...">
+      <button type="button" id="addBtn">Add</button>
+    </div>
+
+    <ul id="hwList"></ul>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const hwInput = document.getElementById('hwInput');
+      const dueInput = document.getElementById('dueInput');
+      const addBtn = document.getElementById('addBtn');
+      const hwList = document.getElementById('hwList');
+
+      let tasks = [];
+      try {
+        tasks = JSON.parse(localStorage.getItem('hwTasks')) || [];
+      } catch (e) {
+        tasks = [];
+      }
+
+      let draggedIndex = null;
+
+      function saveAndRender() {
+        try {
+          localStorage.setItem('hwTasks', JSON.stringify(tasks));
+        } catch (e) {}
+        renderTasks();
+      }
+
+      function renderTasks() {
+        hwList.innerHTML = '';
+        tasks.forEach((task, index) => {
+          const li = document.createElement('li');
+          li.draggable = true;
+
+          li.addEventListener('dragstart', () => {
+            draggedIndex = index;
+            setTimeout(() => li.classList.add('dragging'), 0);
+          });
+
+          li.addEventListener('dragend', () => {
+            li.classList.remove('dragging');
+            draggedIndex = null;
+            document.querySelectorAll('#hwList li').forEach(el => el.classList.remove('drag-over'));
+          });
+
+          li.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (draggedIndex !== null && draggedIndex !== index) {
+              li.classList.add('drag-over');
+            }
+          });
+
+          li.addEventListener('dragleave', () => {
+            li.classList.remove('drag-over');
+          });
+
+          li.addEventListener('drop', (e) => {
+            e.preventDefault();
+            li.classList.remove('drag-over');
+            if (draggedIndex === null || draggedIndex === index) return;
+
+            const [movedItem] = tasks.splice(draggedIndex, 1);
+            tasks.splice(index, 0, movedItem);
+            saveAndRender();
+          });
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'task-checkbox';
+          checkbox.addEventListener('change', () => completeAndRemove(index, li));
+
+          const infoDiv = document.createElement('div');
+          infoDiv.className = 'task-info';
+
+          const taskSpan = document.createElement('span');
+          taskSpan.className = 'task-text';
+          taskSpan.textContent = task.text;
+          infoDiv.appendChild(taskSpan);
+
+          if (task.due) {
+            const dueSpan = document.createElement('span');
+            dueSpan.className = 'due-text';
+            dueSpan.textContent = 'Due: ' + task.due;
+            infoDiv.appendChild(dueSpan);
+          }
+
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'delete-btn';
+          delBtn.textContent = 'Delete';
+          delBtn.addEventListener('click', () => deleteTask(index));
+
+          li.appendChild(checkbox);
+          li.appendChild(infoDiv);
+          li.appendChild(delBtn);
+          hwList.appendChild(li);
+        });
+      }
+
+      function addTask() {
+        const text = hwInput.value.trim();
+        const due = dueInput.value.trim();
+        if (text === '') return;
+
+        tasks.push({ text: text, due: due });
+        hwInput.value = '';
+        dueInput.value = '';
+        saveAndRender();
+        hwInput.focus();
+      }
+
+      function completeAndRemove(index, liElement) {
+        if (liElement.classList.contains('removing')) return;
+        liElement.classList.add('removing');
+        setTimeout(() => {
+          tasks.splice(index, 1);
+          saveAndRender();
+        }, 800);
+      }
+
+      function deleteTask(index) {
+        tasks.splice(index, 1);
+        saveAndRender();
+      }
+
+      addBtn.addEventListener('click', addTask);
+      hwInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addTask();
+      });
+      dueInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addTask();
+      });
+
+      renderTasks();
+    });
+  </script>
+
+</body>
+</html>

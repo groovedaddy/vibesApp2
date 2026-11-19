@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Realistic Pin-Tumbler Lock Picking Simulator</title>
+<style>
+  * { box-sizing: border-box; user-select: none; }
+  body {
+    background: #101216;
+    color: #e2e8f0;
+    font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 18px;
+    margin: 0;
+  }
+  h1 {
+    color: #f39c12;
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    letter-spacing: 0.8px;
+  }
+  p.sub {
+    color: #94a3b8;
+    font-size: 13px;
+    margin: 0 0 14px 0;
+    text-align: center;
+  }
+  .game-wrapper {
+    background: #1a1e26;
+    border: 1px solid #2d3442;
+    border-radius: 12px;
+    padding: 16px;
+    width: 100%;
+    max-width: 820px;
+    box-shadow: 0 14px 35px rgba(0,0,0,0.65);
+  }
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+    background: #232833;
+    padding: 10px 14px;
+    border-radius: 8px;
+  }
+  .mode-group, .stats-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .stat-pill {
+    background: #161a22;
+    border: 1px solid #333b4a;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .stat-pill span { color: #f39c12; }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #13161c;
+    border: 2px solid #333b4a;
+    border-radius: 8px;
+  }
+  .hud-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #232833;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 12px;
+    gap: 10px;
+    font-size: 14px;
+  }
+  #statusMsg {
+    font-weight: bold;
+    color: #38bdf8;
+    text-align: center;
+    flex: 1;
+  }
+  .controls-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  button {
+    background: #2c3545;
+    color: #f8fafc;
+    border: 1px solid #475569;
+    padding: 9px 13px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  button:hover { background: #3b465b; }
+  button.active-btn {
+    background: #e67e22;
+    color: #101216;
+    border-color: #f39c12;
+  }
+  button.ready-turn {
+    background: #16a34a;
+    border-color: #22c55e;
+    color: #ffffff;
+  }
+  .picks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .pick-card {
+    background: #232833;
+    border: 1px solid #333b4a;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .pick-card:hover { background: #2a303d; }
+  .pick-card.selected {
+    border-color: #f39c12;
+    background: #2b2722;
+  }
+  .pick-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #f8fafc;
+    margin-bottom: 3px;
+  }
+  .pick-card.selected .pick-title { color: #f39c12; }
+  .pick-desc {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.3;
+  }
+  .custom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+    background: #232833;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .slider-wrap, .colors-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #475569;
+    cursor: pointer;
+  }
+  .swatch.active {
+    border-color: #ffffff;
+    transform: scale(1.15);
+  }
+  .help-box {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.5;
+    background: #161a22;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border-left: 3px solid #f39c12;
+  }
+</style>
+</head>
+<body>
+
+<h1>REALISTIC PIN-TUMBLER LOCK PICKING</h1>
+<p class="sub">True Keyway Channel Collision &bull; Rigid Pivoting Pick &bull; Binding Order Physics</p>
+
+<div class="game-wrapper">
+  <div class="top-bar">
+    <div class="mode-group">
+      <button type="button" id="btnNormal" class="active-btn">Normal (5 Pins)</button>
+      <button type="button" id="btnHarder">Harder (7 Pins + Spools)</button>
+    </div>
+    <div class="stats-group">
+      <div class="stat-pill">Time: <span id="timerDisplay">0.0s</span></div>
+      <div class="stat-pill">Best: <span id="bestDisplay">--</span></div>
+      <div class="stat-pill">Unlocked: <span id="unlockedCount">0</span></div>
+    </div>
+  </div>
+
+  <canvas id="lockCanvas" width="780" height="360"></canvas>
+
+  <div class="hud-bar">
+    <div>Pin: <strong id="pinIndicator">#1 / 5</strong></div>
+    <div id="statusMsg">Apply Tension (Space), then raise the pick (W) to probe pins</div>
+    <div>Tension: <strong id="tensionIndicator">OFF</strong></div>
+  </div>
+
+  <div class="controls-row">
+    <button type="button" id="btnLeft">&larr; Prev Pin (A)</button>
+    <button type="button" id="btnUp">&uarr; Raise Pick (W)</button>
+    <button type="button" id="btnDown">&darr; Lower Pick (S)</button>
+    <button type="button" id="btnRight">Next Pin (D) &rarr;</button>
+    <button type="button" id="btnTension">Tension Wrench (Space)</button>
+    <button type="button" id="btnTurn">Turn Core (E)</button>
+    <button type="button" id="btnNew">New Lock</button>
+  </div>
+
+  <div class="picks-grid" id="picksGrid">
+    <div class="pick-card selected" data-pick="0">
+      <div class="pick-title">1. Standard Short Hook</div>
+      <div class="pick-desc">Balanced single-pin hook with clean clearance inside the keyway channel.</div>
+    </div>
+    <div class="pick-card" data-pick="1">
+      <div class="pick-title">2. High-Reach Deep Hook</div>
+      <div class="pick-desc">Tall curved tip reaches high-set pins behind low front pins without wall contact.</div>
+    </div>
+    <div class="pick-card" data-pick="2">
+      <div class="pick-title">3. Half-Diamond Probe</div>
+      <div class="pick-desc">Angled ramp profile with slightly wider shear catch forgiveness.</div>
+    </div>
+    <div class="pick-card" data-pick="3">
+      <div class="pick-title">4. Triple-Peak Bogota Rake</div>
+      <div class="pick-desc">Multi-peak wave profile that lifts adjacent pins together when scrubbing.</div>
+    </div>
+  </div>
+
+  <div class="custom-bar">
+    <div class="slider-wrap">
+      <label for="speedSlider"><strong>Pick Speed:</strong></label>
+      <input type="range" id="speedSlider" min="0.3" max="2.5" step="0.1" value="1.0">
+      <span id="speedLabel">1.0x</span>
+    </div>
+    <div class="colors-wrap">
+      <strong>Pick Color:</strong>
+      <div class="swatch active" style="background:#cbd5e1" data-color="#cbd5e1" title="Steel Silver"></div>
+      <div class="swatch" style="background:#f59e0b" data-color="#f59e0b" title="Titanium Gold"></div>
+      <div class="swatch" style="background:#38bdf8" data-color="#38bdf8" title="Cobalt Blue"></div>
+      <div class="swatch" style="background:#f43f5e" data-color="#f43f5e" title="Crimson Red"></div>
+      <div class="swatch" style="background:#a855f7" data-color="#a855f7" title="Anodized Purple"></div>
+      <div class="swatch" style="background:#22c55e" data-color="#22c55e" title="Tactical Green"></div>
+      <input type="color" id="customColor" value="#cbd5e1" title="Custom Color">
+    </div>
+  </div>
+
+  <div class="help-box">
+    <strong>Realistic Keyway Collision &amp; Physics:</strong><br>
+    &bull; <strong>No Phasing Through Metal:</strong> The rigid steel pick enters through the front keyway slot and moves strictly inside the open keyway channel. Its shaft is physically blocked by the keyway roof, floor, and the bottom tips of neighboring key pins.<br>
+    &bull; <strong>Binding Order:</strong> Hold <strong>Space</strong> (or click Tension Wrench), move between pins with <strong>A / D</strong>, and hold <strong>W</strong> to raise the pick until the binding pin clicks onto the hidden shear line and turns green.<br>
+    &bull; <strong>Overset Reset &amp; Core Turn:</strong> Pushing any pin past the shear line oversets it and drops all pins. Once all pins are green, hold <strong>E</strong> to rotate the cylinder 90&deg; open.
+  </div>
+</div>
+
+<script>
+(function() {
+  var canvas = document.getElementById('lockCanvas');
+  var ctx = canvas.getContext('2d');
+
+  // Lock Geometry Constants
+  var LOCK_X = 215;
+  var LOCK_W = 520;
+  var BIBLE_TOP = 34;
+  var SHEAR_Y = 172;
+  var KEYWAY_TOP = 246;     // Roof of the horizontal keyway channel
+  var KEYWAY_BOTTOM = 294;  // Floor of the horizontal keyway channel
+  var PLUG_BOTTOM = 324;    // Bottom of the cylinder plug
+  var DRIVER_H = 44;
+  var PIN_W = 24;
+
+  // Game State
+  var mode = 'normal'; // 'normal' (5 pins) or 'harder' (7 pins + spools)
+  var numPins = 5;
+  var pins = new Array();
+  var bindOrder = new Array();
+  var bindStep = 0;
+  var activePin = 0;
+  var tension = false;
+  var unlocked = false;
+  var coreTurn = 0; // 0 to 90 degrees
+
+  // Pick State (Rigid body constrained inside keyway)
+  var pickType = 0; // 0: Short Hook, 1: Deep Hook, 2: Half Diamond, 3: Bogota Rake
+  var pickColor = '#cbd5e1';
+  var pickSpeedMult = 1.0;
+  var pickReachX = 0;      // Current X coordinate of pick tip
+  var pickPivotY = 276;    // Vertical position of pick at keyway entrance (x = LOCK_X)
+  var pickAngle = 0;       // Pitch angle in radians (negative tilts tip upward)
+
+  // Controls & Timer
+  var holdUp = false;
+  var holdDown = false;
+  var holdTurn = false;
+  var timerRunning = false;
+  var elapsedTime = 0;
+  var lastFrameTime = performance.now();
+  var bestNormal = null;
+  var bestHarder = null;
+  var totalUnlocked = 0;
+
+  // Web Audio
+  var audioCtx = null;
+  function playClick(freq, dur, type, vol) {
+    try {
+      if (!audioCtx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
+      }
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = type || 'triangle';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + dur);
+      gain.gain.setValueAtTime(vol || 0.22, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + dur);
+    } catch (e) {}
+  }
+
+  function getEl(arr, idx) {
+    return arr.slice(idx, idx + 1).pop();
+  }
+  function setEl(arr, idx, val) {
+    arr.splice(idx, 1, val);
+  }
+
+  function setStatus(text, color) {
+    var el = document.getElementById('statusMsg');
+    el.textContent = text;
+    el.style.color = color || '#e2e8f0';
+  }
+
+  function startTimerIfNeeded() {
+    if (!timerRunning && !unlocked) {
+      timerRunning = true;
+    }
+  }
+
+  function getPickSpecs() {
+    if (pickType === 0) {
+      return { name: 'Short Hook', tipHeight: 15, tipWidth: 8, tolBonus: 0, rake: false };
+    } else if (pickType === 1) {
+      return { name: 'Deep Hook', tipHeight: 24, tipWidth: 8, tolBonus: 0, rake: false };
+    } else if (pickType === 2) {
+      return { name: 'Half-Diamond', tipHeight: 14, tipWidth: 14, tolBonus: 1.3, rake: false };
+    } else {
+      return { name: 'Bogota Rake', tipHeight: 13, tipWidth: 38, tolBonus: 0.6, rake: true };
+    }
+  }
+
+  function initLock() {
+    numPins = (mode === 'normal') ? 5 : 7;
+    pins = new Array();
+    bindOrder = new Array();
+    bindStep = 0;
+    activePin = 0;
+    unlocked = false;
+    coreTurn = 0;
+    timerRunning = false;
+    elapsedTime = 0;
+    document.getElementById('timerDisplay').textContent = '0.0s';
+
+    var usableW = LOCK_W - 70;
+    var spacing = usableW / (numPins + 0.4);
+    var startX = LOCK_X + spacing * 0.85;
+
+    for (var i = 0; i < numPins; i++) {
+      bindOrder.push(i);
+      // Key pin length determines how far down into the keyway the pin hangs at rest
+      // At rest, top of key pin is at SHEAR_Y, bottom tip hangs down to SHEAR_Y + keyLen
+      // Total lift needed to bring bottom of driver pin to SHEAR_Y is (keyLen - (KEYWAY_TOP - SHEAR_Y))
+      var minLen = (KEYWAY_TOP - SHEAR_Y) + 12; // 86px -> needs 12px lift
+      var maxLen = (KEYWAY_TOP - SHEAR_Y) + 36; // 110px -> needs 36px lift
+      var keyLen = Math.floor(Math.random() * (maxLen - minLen + 1)) + minLen;
+      var isSpool = (mode === 'harder') && (i % 2 === 1);
+
+      pins.push({
+        index: i,
+        x: startX + i * spacing,
+        keyLen: keyLen,
+        lift: 0,
+        vel: 0,
+        drvLift: 0,
+        set: false,
+        overset: false,
+        spool: isSpool
+      });
+    }
+
+    // Shuffle binding order
+    for (var j = numPins - 1; j > 0; j--) {
+      var r = Math.floor(Math.random() * (j + 1));
+      var a = getEl(bindOrder, j);
+      var b = getEl(bindOrder, r);
+      setEl(bindOrder, j, b);
+      setEl(bindOrder, r, a);
+    }
+
+    resetPickToBottom();
+    setStatus('Apply Tension (Space), then raise the pick (W) to probe Pin #1', '#38bdf8');
+  }
+
+  function resetPickToBottom() {
+    var target = getEl(pins, activePin);
+    pickReachX = target.x;
+    pickPivotY = KEYWAY_BOTTOM - 8;
+    pickAngle = 0;
+  }
+
+  function dropAllPins(reasonMsg, col) {
+    for (var i = 0; i < numPins; i++) {
+      var p = getEl(pins, i);
+      p.set = false;
+      p.overset = false;
+      p.drvLift = p.lift;
+    }
+    bindStep = 0;
+    playClick(260, 0.12, 'sawtooth', 0.25);
+    if (reasonMsg) setStatus(reasonMsg, col || '#ef4444');
+  }
+
+  function toggleTension() {
+    if (unlocked) return;
+    startTimerIfNeeded();
+    tension = !tension;
+    if (!tension) {
+      dropAllPins('Tension released — all pins dropped back down!', '#94a3b8');
+    } else {
+      setStatus('Tension ON — raise pick (W) to find which pin is binding', '#f39c12');
+      playClick(520, 0.05, 'sine', 0.15);
+    }
+  }
+
+  function selectPin(idx) {
+    if (unlocked) return;
+    var clamped = Math.max(0, Math.min(numPins - 1, idx));
+    if (clamped !== activePin) {
+      activePin = clamped;
+      // Reset pick cleanly to the bottom of the keyway channel when switching pins
+      pickPivotY = KEYWAY_BOTTOM - 8;
+      pickAngle = 0;
+    }
+  }
+
+  // Compute exact pick geometry and enforce physical collision with keyway walls & pins
+  function getPickGeometry(reachX, pivotY, angle, specs) {
+    // Handle & collar outside lock (left of LOCK_X)
+    var handleLen = 155;
+    var entryX = LOCK_X;
+    var entryY = pivotY;
+
+    var cosA = Math.cos(angle);
+    var sinA = Math.sin(angle);
+
+    // Shaft runs from entryX to tipBaseX inside the keyway
+    var shaftLen = Math.max(20, (reachX - entryX) / Math.max(0.4, cosA));
+    var tipBaseX = entryX + shaftLen * cosA;
+    var tipBaseY = entryY + shaftLen * sinA;
+
+    // Tip rises perpendicular-ish (upward) from tipBase
+    var tipTopX = tipBaseX + specs.tipHeight * sinA;
+    var tipTopY = tipBaseY - specs.tipHeight * cosA;
+
+    var handleEndX = entryX - handleLen * cosA;
+    var handleEndY = entryY - handleLen * sinA;
+
+    return {
+      handleEndX: handleEndX,
+      handleEndY: handleEndY,
+      entryX: entryX,
+      entryY: entryY,
+      tipBaseX: tipBaseX,
+      tipBaseY: tipBaseY,
+      tipTopX: tipTopX,
+      tipTopY: tipTopY,
+      shaftLen: shaftLen
+    };
+  }
+
+  // Sample points along the rigid shaft & tip to check physical boundaries inside the keyway
+  function checkKeywayCollision(reachX, pivotY, angle, specs) {
+    var geom = getPickGeometry(reachX, pivotY, angle, specs);
+    var shaftHalfThick = 3.2;
+
+    // 1. Check keyway entry slot bounds (entryY must stay between KEYWAY_TOP + 5 and KEYWAY_BOTTOM - 5)
+    if (geom.entryY - shaftHalfThick < KEYWAY_TOP + 3) return true;
+    if (geom.entryY + shaftHalfThick > KEYWAY_BOTTOM - 3) return true;
+
+    // 2. Check shaft bottom & top against keyway ceiling and floor along its entire length
+    var samples = 16;
+    for (var s = 0; s <= samples; s++) {
+      var t = s / samples;
+      var sx = geom.entryX + (geom.tipBaseX - geom.entryX) * t;
+      var sy = geom.entryY + (geom.tipBaseY - geom.entryY) * t;
+
+      // Shaft cannot pass through the solid metal floor or roof of the keyway
+      if (sy + shaftHalfThick > KEYWAY_BOTTOM - 1.5) return true;
+      if (sy - shaftHalfThick < KEYWAY_TOP + 1.5) return true;
+
+      // Check if the shaft itself hits any preceding pin (front pins blocking shaft)
+      for (var i = 0; i < activePin; i++) {
+        var frontPin = getEl(pins, i);
+        var pinTipY = (SHEAR_Y + frontPin.keyLen) - frontPin.lift;
+        if (Math.abs(sx - frontPin.x) < (PIN_W * 0.45)) {
+          // Shaft top cannot phase through a low-hanging front pin!
+          if (sy - shaftHalfThick < pinTipY - 1) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // 3. Check tip bounds against keyway floor and chamber ceiling
+    if (geom.tipTopY < SHEAR_Y + 6) return true;
+    if (geom.tipBaseY + shaftHalfThick > KEYWAY_BOTTOM - 1.5) return true;
+
+    return false;
+  }
+
+  function update(dt) {
+    if (timerRunning && !unlocked) {
+      elapsedTime += dt;
+      document.getElementById('timerDisplay').textContent = elapsedTime.toFixed(1) + 's';
+    }
+
+    // Smoothly slide pick X toward active pin
+    var targetPin = getEl(pins, activePin);
+    pickReachX += (targetPin.x - pickReachX) * 0.28;
+
+    var specs = getPickSpecs();
+
+    // Core Rotation Mechanic (E key or Turn button)
+    if (holdTurn && !unlocked) {
+      startTimerIfNeeded();
+      if (bindStep >= numPins && tension) {
+        coreTurn = Math.min(90, coreTurn + 115 * dt);
+        if (coreTurn >= 90) {
+          unlocked = true;
+          timerRunning = false;
+          totalUnlocked++;
+          document.getElementById('unlockedCount').textContent = totalUnlocked;
+          playClick(880, 0.3, 'triangle', 0.3);
+
+          if (mode === 'normal') {
+            if (bestNormal === null || elapsedTime < bestNormal) bestNormal = elapsedTime;
+            document.getElementById('bestDisplay').textContent = bestNormal.toFixed(1) + 's';
+          } else {
+            if (bestHarder === null || elapsedTime < bestHarder) bestHarder = elapsedTime;
+            document.getElementById('bestDisplay').textContent = bestHarder.toFixed(1) + 's';
+          }
+          setStatus('LOCK OPENED in ' + elapsedTime.toFixed(1) + 's! Click New Lock to play again.', '#22c55e');
+        } else {
+          setStatus('Turning cylinder plug... ' + Math.round(coreTurn) + '° / 90°', '#22c55e');
+        }
+      } else if (!tension) {
+        setStatus('Apply Tension (Space) before turning the core!', '#f39c12');
+      } else {
+        coreTurn = Math.min(11, coreTurn + 45 * dt);
+        var rem = numPins - bindStep;
+        setStatus('Plug blocked! ' + rem + ' pin' + (rem > 1 ? 's' : '') + ' still need to be set.', '#ef4444');
+      }
+    } else if (!unlocked) {
+      var idleAngle = tension ? 6 : 0;
+      coreTurn += (idleAngle - coreTurn) * 0.2;
+    }
+
+    // Pick Vertical & Angular Movement inside Keyway Channel
+    if (!unlocked) {
+      var curBindingIdx = getEl(bindOrder, bindStep);
+      var isCurBinding = tension && (curBindingIdx === activePin);
+      var baseRate = (isCurBinding ? 36 : 56) * pickSpeedMult * dt;
+
+      if (holdUp) {
+        startTimerIfNeeded();
+        // Realistic two-stage motion:
+        // Stage 1: Lift the entire pick body upward inside the keyway channel until near roof/pin
+        // Stage 2: Pivot/lever the pick around the keyway roof/fulcrum so the tip rises cleanly into the chamber
+        var nextPivotY = pickPivotY - baseRate * 0.55;
+        var nextAngle = pickAngle - (baseRate * 0.011);
+
+        // Try combined lift + tilt first, then pure tilt if pivot hits keyway roof
+        if (!checkKeywayCollision(pickReachX, nextPivotY, nextAngle, specs)) {
+          pickPivotY = nextPivotY;
+          pickAngle = nextAngle;
+        } else if (!checkKeywayCollision(pickReachX, pickPivotY, nextAngle, specs)) {
+          pickAngle = nextAngle;
+        } else if (!checkKeywayCollision(pickReachX, nextPivotY, pickAngle, specs)) {
+          pickPivotY = nextPivotY;
+        } else {
+          // Physically blocked by front pin or keyway wall!
+          for (var f = 0; f < activePin; f++) {
+            var fp = getEl(pins, f);
+            var fpTip = (SHEAR_Y + fp.keyLen) - fp.lift;
+            if (fpTip > KEYWAY_TOP + 12) {
+              setStatus('Shaft blocked by low Pin #' + (f + 1) + '! Use Deep Hook (#2) or set front pin.', '#f59e0b');
+              break;
+            }
+          }
+        }
+      } else if (holdDown) {
+        startTimerIfNeeded();
+        var downPivotY = pickPivotY + baseRate * 0.65;
+        var downAngle = pickAngle + (baseRate * 0.013);
+
+        if (!checkKeywayCollision(pickReachX, downPivotY, downAngle, specs)) {
+          pickPivotY = downPivotY;
+          pickAngle = downAngle;
+        } else if (!checkKeywayCollision(pickReachX, pickPivotY, downAngle, specs)) {
+          pickAngle = downAngle;
+        } else if (!checkKeywayCollision(pickReachX, downPivotY, pickAngle, specs)) {
+          pickPivotY = downPivotY;
+        }
+      }
+    }
+
+    // Compute current pick tip contact height and apply physics to pins
+    var geom = getPickGeometry(pickReachX, pickPivotY, pickAngle, specs);
+    var tolerance = ((mode === 'normal') ? 4.8 : 3.4) + specs.tolBonus;
+
+    for (var i = 0; i < numPins; i++) {
+      var p = getEl(pins, i);
+      var requiredLift = p.keyLen - (KEYWAY_TOP - SHEAR_Y);
+      var restTipY = SHEAR_Y + p.keyLen;
+
+      // Determine how high the pick tip is pushing this pin
+      var tipContactLift = 0;
+      var horzDist = Math.abs(geom.tipTopX - p.x);
+      var reachHalfW = specs.rake ? (specs.tipWidth * 0.55) : (PIN_W * 0.48);
+
+      if (horzDist <= reachHalfW) {
+        // Rake wave contour affects adjacent pins smoothly
+        var waveFactor = 1.0;
+        if (specs.rake && i !== activePin) {
+          waveFactor = Math.max(0.45, 1.0 - (horzDist / reachHalfW) * 0.5);
+        }
+        var effectiveTipY = geom.tipTopY + (1 - waveFactor) * 10;
+        if (effectiveTipY < restTipY) {
+          tipContactLift = restTipY - effectiveTipY;
+        }
+      }
+
+      // Apply gravity + pick contact
+      if (!unlocked) {
+        if (p.set) {
+          // Driver pin is latched at requiredLift on the shear line!
+          p.drvLift = requiredLift;
+          // Key pin rests on the pick if lifted, or settles smoothly back to rest position
+          if (tipContactLift > p.lift) {
+            p.lift = tipContactLift;
+          } else {
+            p.lift = Math.max(0, p.lift - 55 * dt);
+          }
+
+          // Check if player keeps pushing the key pin past the shear line -> OVERSET!
+          if (p.lift > requiredLift + tolerance + 2.5) {
+            p.overset = true;
+            dropAllPins('Pin #' + (i + 1) + ' OVERSET! All pins dropped.', '#ef4444');
+            break;
+          }
+        } else {
+          // Unset pin physics
+          if (tipContactLift >= p.lift) {
+            p.lift = tipContactLift;
+            p.vel = 0;
+          } else {
+            // Smooth spring-assisted descent when pick lowers
+            p.vel += 140 * dt;
+            p.lift = Math.max(tipContactLift, p.lift - p.vel * dt);
+            if (p.lift <= tipContactLift) p.vel = 0;
+          }
+
+          // Clamp maximum physical travel inside chamber ceiling
+          var maxChamberLift = (SHEAR_Y - BIBLE_TOP) - DRIVER_H - 6;
+          if (p.lift > maxChamberLift) p.lift = maxChamberLift;
+          p.drvLift = p.lift;
+
+          // Shear line catch & overset checks when Tension is ON
+          if (tension && tipContactLift > 2) {
+            var targetBindPin = getEl(bindOrder, bindStep);
+            var isThisBinding = (targetBindPin === i);
+
+            if (isThisBinding) {
+              if (Math.abs(p.lift - requiredLift) <= tolerance) {
+                // PIN SET!
+                p.set = true;
+                p.drvLift = requiredLift;
+                bindStep++;
+                playClick(1180, 0.07, 'triangle', 0.28);
+
+                if (bindStep >= numPins) {
+                  setStatus('ALL PINS SET! Hold E (or Turn Core) to open the lock!', '#22c55e');
+                } else {
+                  setStatus('Pin #' + (i + 1) + ' SET! (' + bindStep + '/' + numPins + ') — Probe next pin.', '#22c55e');
+                }
+              } else if (p.lift > requiredLift + tolerance) {
+                dropAllPins('Pin #' + (i + 1) + ' pushed too high — OVERSET! Lock reset.', '#ef4444');
+                break;
+              } else if (i === activePin && holdUp) {
+                var spoolNote = p.spool ? ' (Spool binding — lift carefully)' : ' (Binding — keep lifting)';
+                setStatus('Pin #' + (i + 1) + spoolNote, '#f39c12');
+              }
+            } else {
+              // Non-binding pin pushed past shear line -> OVERSET!
+              if (p.lift > requiredLift + tolerance + 1.5) {
+                dropAllPins('Pin #' + (i + 1) + ' was not binding and OVERSET! Lock reset.', '#ef4444');
+                break;
+              } else if (i === activePin && holdUp && p.lift > 6) {
+                setStatus('Pin #' + (i + 1) + ' feels springy (not binding yet).', '#94a3b8');
+              }
+            }
+          } else if (!tension && i === activePin && holdUp && p.lift > 6) {
+            setStatus('No tension! Hold Space (or click Tension Wrench) first.', '#38bdf8');
+          }
+        }
+      }
+    }
+
+    // Update HUD indicators
+    document.getElementById('pinIndicator').textContent = '#' + (activePin + 1) + ' / ' + numPins;
+    var tenEl = document.getElementById('tensionIndicator');
+    tenEl.textContent = tension ? 'ON' : 'OFF';
+    tenEl.style.color = tension ? '#f39c12' : '#94a3b8';
+    document.getElementById('btnTension').className = tension ? 'active-btn' : '';
+
+    var turnBtn = document.getElementById('btnTurn');
+    if (bindStep >= numPins && !unlocked) {
+      turnBtn.className = 'ready-turn';
+    } else {
+      turnBtn.className = '';
+    }
+  }
+
+  function drawCylinderDial() {
+    var cx = 92;
+    var cy = 225;
+    var r = 56;
+
+    // Outer lock body bezel
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#1e2430';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = (bindStep >= numPins && !unlocked) ? '#22c55e' : '#3b4559';
+    ctx.stroke();
+
+    // Rotating plug face
+    ctx.translate(cx, cy);
+    ctx.rotate((coreTurn * Math.PI) / 180);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = unlocked ? '#1e3a2f' : '#2b3342';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#475569';
+    ctx.stroke();
+
+    // Realistic paracentric keyway profile cutout in center
+    ctx.fillStyle = '#0d1015';
+    ctx.beginPath();
+    ctx.moveTo(-7, -34);
+    ctx.lineTo(7, -34);
+    ctx.lineTo(7, -10);
+    ctx.lineTo(2, -4);
+    ctx.lineTo(7, 4);
+    ctx.lineTo(7, 34);
+    ctx.lineTo(-7, 34);
+    ctx.lineTo(-7, 10);
+    ctx.lineTo(-2, 2);
+    ctx.lineTo(-7, -6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tension Wrench inserted in bottom of keyway
+    if (tension) {
+      ctx.fillStyle = '#f39c12';
+      ctx.fillRect(-4, 24, 8, 52);
+      ctx.strokeStyle = '#b45309';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-4, 24, 8, 52);
+    }
+
+    ctx.restore();
+
+    // Turn degree label
+    ctx.fillStyle = unlocked ? '#22c55e' : '#94a3b8';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CORE: ' + Math.round(coreTurn) + '° / 90°', cx, cy + r + 28);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. Draw Front Cylinder Face & Tension Wrench
+    drawCylinderDial();
+
+    // 2. Draw Upper Lock Housing (Bible)
+    ctx.fillStyle = '#252b38';
+    ctx.beginPath();
+    ctx.roundRect(LOCK_X, BIBLE_TOP, LOCK_W, SHEAR_Y - BIBLE_TOP, [8, 8, 0, 0]);
+    ctx.fill();
+    ctx.strokeStyle = '#3b4559';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 3. Draw Lower Rotating Cylinder Plug (Upper wall & Lower wall around open Keyway Channel)
+    var plugColor = unlocked ? '#1f4233' : '#2f3747';
+    // Upper plug wall (between SHEAR_Y and KEYWAY_TOP)
+    ctx.fillStyle = plugColor;
+    ctx.fillRect(LOCK_X, SHEAR_Y, LOCK_W, KEYWAY_TOP - SHEAR_Y);
+
+    // Lower plug wall (between KEYWAY_BOTTOM and PLUG_BOTTOM)
+    ctx.beginPath();
+    ctx.roundRect(LOCK_X, KEYWAY_BOTTOM, LOCK_W, PLUG_BOTTOM - KEYWAY_BOTTOM, [0, 0, 8, 8]);
+    ctx.fill();
+
+    // Open dark keyway channel
+    ctx.fillStyle = '#0f1218';
+    ctx.fillRect(LOCK_X, KEYWAY_TOP, LOCK_W, KEYWAY_BOTTOM - KEYWAY_TOP);
+
+    // Keyway metallic inner rails (walls that physically constrain the pick)
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(LOCK_X, KEYWAY_TOP);
+    ctx.lineTo(LOCK_X + LOCK_W, KEYWAY_TOP);
+    ctx.moveTo(LOCK_X, KEYWAY_BOTTOM);
+    ctx.lineTo(LOCK_X + LOCK_W, KEYWAY_BOTTOM);
+    ctx.stroke();
+
+    // Subtle shear plane seam between bible and plug
+    ctx.strokeStyle = unlocked ? 'rgba(34, 197, 94, 0.5)' : 'rgba(148, 163, 184, 0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(LOCK_X, SHEAR_Y);
+    ctx.lineTo(LOCK_X + LOCK_W, SHEAR_Y);
+    ctx.stroke();
+
+    // 4. Draw Pin Chambers, Springs, Driver Pins & Key Pins
+    for (var i = 0; i < numPins; i++) {
+      var p = getEl(pins, i);
+      var chamberTop = BIBLE_TOP + 10;
+      var chamberBot = KEYWAY_TOP;
+      var halfW = PIN_W / 2;
+
+      // Active pin highlight column
+      if (i === activePin && !unlocked) {
+        ctx.fillStyle = 'rgba(243, 156, 18, 0.08)';
+        ctx.fillRect(p.x - halfW - 6, chamberTop - 4, PIN_W + 12, (KEYWAY_BOTTOM - chamberTop) + 4);
+      }
+
+      // Vertical pin bore inside bible & upper plug
+      ctx.fillStyle = '#12151c';
+      ctx.fillRect(p.x - halfW - 2, chamberTop, PIN_W + 4, chamberBot - chamberTop);
+
+      // Calculate exact vertical coordinates
+      var drvBottomY = SHEAR_Y - p.drvLift;
+      var drvTopY = drvBottomY - DRIVER_H;
+
+      var keyTopY = SHEAR_Y - p.lift;
+      var keyBottomY = keyTopY + p.keyLen;
+
+      // Draw Spring
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      var coils = 7;
+      var springSpan = Math.max(6, drvTopY - chamberTop);
+      for (var c = 0; c <= coils; c++) {
+        var sy = chamberTop + (springSpan / coils) * c;
+        var sx = p.x + (c % 2 === 0 ? -7 : 7);
+        if (c === 0) ctx.moveTo(p.x, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+
+      // Draw Driver Pin (Standard or Spool)
+      ctx.fillStyle = p.set ? '#22c55e' : '#cbd5e1';
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.5;
+
+      if (p.spool) {
+        // Spool security pin shape (narrow waist in middle)
+        var waist = 5;
+        var lipH = 10;
+        ctx.beginPath();
+        ctx.moveTo(p.x - halfW, drvTopY);
+        ctx.lineTo(p.x + halfW, drvTopY);
+        ctx.lineTo(p.x + halfW, drvTopY + lipH);
+        ctx.lineTo(p.x + halfW - waist, drvTopY + lipH + 2);
+        ctx.lineTo(p.x + halfW - waist, drvBottomY - lipH - 2);
+        ctx.lineTo(p.x + halfW, drvBottomY - lipH);
+        ctx.lineTo(p.x + halfW, drvBottomY);
+        ctx.lineTo(p.x - halfW, drvBottomY);
+        ctx.lineTo(p.x - halfW, drvBottomY - lipH);
+        ctx.lineTo(p.x - halfW + waist, drvBottomY - lipH - 2);
+        ctx.lineTo(p.x - halfW + waist, drvTopY + lipH + 2);
+        ctx.lineTo(p.x - halfW, drvTopY + lipH);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(p.x - halfW, drvTopY, PIN_W, DRIVER_H);
+        ctx.strokeRect(p.x - halfW, drvTopY, PIN_W, DRIVER_H);
+      }
+
+      // Draw Key Pin (Brass with tapered bottom tip hanging into keyway)
+      ctx.fillStyle = p.set ? '#4ade80' : '#eab308';
+      ctx.beginPath();
+      ctx.moveTo(p.x - halfW, keyTopY);
+      ctx.lineTo(p.x + halfW, keyTopY);
+      ctx.lineTo(p.x + halfW, keyBottomY - 8);
+      ctx.lineTo(p.x, keyBottomY);
+      ctx.lineTo(p.x - halfW, keyBottomY - 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Pin Chamber Number Label below plug
+      ctx.fillStyle = (i === activePin && !unlocked) ? '#f39c12' : '#94a3b8';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('#' + (i + 1), p.x, PLUG_BOTTOM + 18);
+    }
+
+    // 5. Draw Rigid Lockpick Tool Inside the Keyway Channel
+    var specs = getPickSpecs();
+    var geom = getPickGeometry(pickReachX, pickPivotY, pickAngle, specs);
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Ergonomic Pick Handle (outside keyway on left)
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    ctx.moveTo(geom.handleEndX, geom.handleEndY);
+    ctx.lineTo(geom.entryX - 24 * Math.cos(pickAngle), geom.entryY - 24 * Math.sin(pickAngle));
+    ctx.stroke();
+
+    ctx.strokeStyle = pickColor;
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.moveTo(geom.handleEndX, geom.handleEndY);
+    ctx.lineTo(geom.entryX - 24 * Math.cos(pickAngle), geom.entryY - 24 * Math.sin(pickAngle));
+    ctx.stroke();
+
+    // Rigid Metal Shaft entering through keyway slot
+    ctx.strokeStyle = pickColor;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(geom.entryX - 24 * Math.cos(pickAngle), geom.entryY - 24 * Math.sin(pickAngle));
+    ctx.lineTo(geom.tipBaseX, geom.tipBaseY);
+
+    // Draw Tip Profile based on selected tool
+    if (pickType === 0 || pickType === 1) {
+      // Short Hook or Deep Hook
+      ctx.lineTo(geom.tipTopX, geom.tipTopY);
+      ctx.stroke();
+    } else if (pickType === 2) {
+      // Half-Diamond Triangular Tip
+      ctx.stroke();
+      ctx.fillStyle = pickColor;
+      ctx.beginPath();
+      ctx.moveTo(geom.tipBaseX - 7 * Math.cos(pickAngle), geom.tipBaseY - 7 * Math.sin(pickAngle));
+      ctx.lineTo(geom.tipTopX, geom.tipTopY);
+      ctx.lineTo(geom.tipBaseX + 7 * Math.cos(pickAngle), geom.tipBaseY + 7 * Math.sin(pickAngle));
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Triple-Peak Bogota Rake Wave
+      var cosA = Math.cos(pickAngle);
+      var sinA = Math.sin(pickAngle);
+      var h = specs.tipHeight;
+      ctx.moveTo(geom.tipBaseX - 18 * cosA, geom.tipBaseY - 18 * sinA);
+      ctx.lineTo(geom.tipBaseX - 12 * cosA + h * sinA, geom.tipBaseY - 12 * sinA - h * cosA);
+      ctx.lineTo(geom.tipBaseX - 6 * cosA + (h * 0.4) * sinA, geom.tipBaseY - 6 * sinA - (h * 0.4) * cosA);
+      ctx.lineTo(geom.tipTopX, geom.tipTopY);
+      ctx.lineTo(geom.tipBaseX + 6 * cosA + (h * 0.4) * sinA, geom.tipBaseY + 6 * sinA - (h * 0.4) * cosA);
+      ctx.lineTo(geom.tipBaseX + 12 * cosA + h * sinA, geom.tipBaseY + 12 * sinA - h * cosA);
+      ctx.lineTo(geom.tipBaseX + 18 * cosA, geom.tipBaseY + 18 * sinA);
+      ctx.stroke();
+    }
+
+    // Keyway entry fulcrum contact indicator
+    ctx.fillStyle = '#f39c12';
+    ctx.beginPath();
+    ctx.arc(geom.entryX, geom.entryY, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function loop(now) {
+    var dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // UI Event Bindings
+  document.getElementById('btnNormal').addEventListener('click', function() {
+    mode = 'normal';
+    this.className = 'active-btn';
+    document.getElementById('btnHarder').className = '';
+    document.getElementById('bestDisplay').textContent = bestNormal ? bestNormal.toFixed(1) + 's' : '--';
+    initLock();
+  });
+
+  document.getElementById('btnHarder').addEventListener('click', function() {
+    mode = 'harder';
+    this.className = 'active-btn';
+    document.getElementById('btnNormal').className = '';
+    document.getElementById('bestDisplay').textContent = bestHarder ? bestHarder.toFixed(1) + 's' : '--';
+    initLock();
+  });
+
+  document.getElementById('btnLeft').addEventListener('click', function() { selectPin(activePin - 1); });
+  document.getElementById('btnRight').addEventListener('click', function() { selectPin(activePin + 1); });
+  document.getElementById('btnTension').addEventListener('click', toggleTension);
+  document.getElementById('btnNew').addEventListener('click', initLock);
+
+  function bindHold(btnId, setter) {
+    var el = document.getElementById(btnId);
+    el.addEventListener('mousedown', function() { setter(true); });
+    el.addEventListener('mouseup', function() { setter(false); });
+    el.addEventListener('mouseleave', function() { setter(false); });
+    el.addEventListener('touchstart', function(e) { e.preventDefault(); setter(true); });
+    el.addEventListener('touchend', function() { setter(false); });
+  }
+  bindHold('btnUp', function(v) { holdUp = v; });
+  bindHold('btnDown', function(v) { holdDown = v; });
+  bindHold('btnTurn', function(v) { holdTurn = v; });
+
+  // Pick Selection Cards
+  var cards = document.querySelectorAll('.pick-card');
+  for (var c = 0; c < cards.length; c++) {
+    cards[c].addEventListener('click', function() {
+      for (var k = 0; k < cards.length; k++) cards[k].classList.remove('selected');
+      this.classList.add('selected');
+      pickType = parseInt(this.getAttribute('data-pick'), 10);
+      pickPivotY = KEYWAY_BOTTOM - 8;
+      pickAngle = 0;
+    });
+  }
+
+  // Speed Slider & Color Swatches
+  document.getElementById('speedSlider').addEventListener('input', function() {
+    pickSpeedMult = parseFloat(this.value);
+    document.getElementById('speedLabel').textContent = pickSpeedMult.toFixed(1) + 'x';
+  });
+
+  var swatches = document.querySelectorAll('.swatch');
+  for (var s = 0; s < swatches.length; s++) {
+    swatches[s].addEventListener('click', function() {
+      for (var k = 0; k < swatches.length; k++) swatches[k].classList.remove('active');
+      this.classList.add('active');
+      pickColor = this.getAttribute('data-color');
+      document.getElementById('customColor').value = pickColor;
+    });
+  }
+
+  document.getElementById('customColor').addEventListener('input', function() {
+    pickColor = this.value;
+    for (var k = 0; k < swatches.length; k++) swatches[k].classList.remove('active');
+  });
+
+  // Keyboard Controls
+  window.addEventListener('keydown', function(e) {
+    var k = e.key === ' ' ? 'space' : e.key.toLowerCase();
+    if (k === 'space' || k === 'arrowup' || k === 'arrowdown' || k === 'arrowleft' || k === 'arrowright') {
+      e.preventDefault();
+    }
+    if (k === 'space' && !e.repeat) toggleTension();
+    if (k === 'arrowleft' || k === 'a') selectPin(activePin - 1);
+    if (k === 'arrowright' || k === 'd') selectPin(activePin + 1);
+    if (k === 'arrowup' || k === 'w') holdUp = true;
+    if (k === 'arrowdown' || k === 's') holdDown = true;
+    if (k === 'e') holdTurn = true;
+    if (k === '1' || k === '2' || k === '3' || k === '4') {
+      var idx = parseInt(k, 10) - 1;
+      cards[idx].click();
+    }
+  });
+
+  window.addEventListener('keyup', function(e) {
+    var k = e.key === ' ' ? 'space' : e.key.toLowerCase();
+    if (k === 'arrowup' || k === 'w') holdUp = false;
+    if (k === 'arrowdown' || k === 's') holdDown = false;
+    if (k === 'e') holdTurn = false;
+  });
+
+  initLock();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

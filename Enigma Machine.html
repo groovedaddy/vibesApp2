@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 Rotor Enigma Machine</title>
+<style>
+*{box-sizing:border-box}
+body{background:#151923;color:#eee;font-family:Arial,sans-serif;padding:25px}
+.container{max-width:1050px;margin:auto}
+h1{text-align:center;color:#e4bd72}
+.panel{background:#222938;padding:20px;border-radius:12px;margin:20px 0}
+label{display:block;margin:12px 0 6px}
+select,input,textarea,button{background:#151923;color:white;border:1px solid #596477;padding:10px;border-radius:6px;font-size:15px}
+input,textarea{width:100%}
+textarea{min-height:120px;resize:vertical}
+button{cursor:pointer;background:#9a7135;border:none;margin:5px}
+button:hover{background:#bd914e}
+.rotors{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+.rotor{background:#151923;padding:15px;border-radius:8px;text-align:center}
+.rotor select{width:100%}
+.rotor input{text-align:center;margin-top:8px}
+.output{color:#e4bd72;overflow-wrap:anywhere;min-height:40px;padding:10px 0}
+.small{color:#aab3c2;font-size:13px}
+.switchboard{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin:20px 0}
+.socket{background:#151923;border:2px solid #596477;color:white;font-weight:bold;font-size:17px;aspect-ratio:1;border-radius:50%;padding:0;margin:0}
+.socket:hover{background:#3c4658}
+.socket.connected{background:#9a7135;border-color:#e4bd72}
+.socket.selected{background:#e4bd72;border:3px solid white;color:#151923}
+.connections{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}
+.connection{background:#9a7135;color:white;padding:8px 12px;border-radius:6px;font-weight:bold;cursor:pointer;margin:0}
+.status{color:#e4bd72;min-height:22px}
+@media(max-width:650px){.rotors{grid-template-columns:1fr}.switchboard{gap:6px}.socket{font-size:14px}}
+
+.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.auth-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.auth-actions button{margin:0}
+.auth-status{min-height:22px;color:#e4bd72;margin-top:10px;overflow-wrap:anywhere}
+.secure-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.secure-settings input{width:100%}
+.secure-list{display:grid;gap:10px;margin-top:14px}
+.secure-item{background:#151923;border:1px solid #596477;border-radius:8px;padding:12px}
+.secure-item button{margin-left:0}
+@media(max-width:650px){.auth-grid,.secure-settings{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+<style id="vibe-apps-navigation">#vibe-back-link{position:fixed!important;top:12px!important;left:12px!important;z-index:2147483647!important;display:inline-flex!important;align-items:center!important;gap:8px!important;padding:10px 15px!important;border-radius:999px!important;background:#12243d!important;color:#fff!important;font:600 14px/1.2 system-ui,-apple-system,sans-serif!important;text-decoration:none!important;box-shadow:0 4px 18px #0006!important;border:1px solid #ffffff55!important}#vibe-back-link:hover,#vibe-back-link:focus{background:#255b9c!important;outline:2px solid #fff!important;outline-offset:2px!important}@media(max-width:600px){#vibe-back-link{top:8px!important;left:8px!important;padding:8px 11px!important;font-size:12px!important}}</style>
+<a id="vibe-back-link" href="index.html" aria-label="Back to Vibe Apps 1">← Back to Vibe Apps 1</a>
+
+<div class="container">
+<h1>ENIGMA MACHINE</h1>
+<p style="text-align:center">10-Rotor Selection / 3-Rotor Encryption</p>
+
+
+<div class="panel" id="accountPanel">
+<h2>Account</h2>
+<p class="small">Anyone can register. Machine settings are visible only to their owner and users the owner authorizes.</p>
+<div class="auth-grid">
+  <div><label for="accountEmail">Email address</label><input id="accountEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+  <div><label for="accountPassword">Password</label><input id="accountPassword" type="password" autocomplete="current-password" placeholder="Password"></div>
+</div>
+<div class="auth-actions">
+  <button onclick="signUp()">Create Account</button>
+  <button onclick="signIn()">Sign In</button>
+  <button onclick="signOut()">Sign Out</button>
+</div>
+<div class="auth-status" id="authStatus">Not signed in.</div>
+</div>
+<div class="panel" id="secureSettingsPanel">
+<h2>Secure Machine Settings</h2>
+<p class="small">Save a configuration, load configurations shared with you, and authorize other registered users by email.</p>
+<div class="secure-settings">
+  <div><label for="configName">Configuration name</label><input id="configName" type="text" maxlength="80" placeholder="Example: Group 1 settings"></div>
+  <div><label for="grantEmail">Registered user's email</label><input id="grantEmail" type="email" placeholder="person@example.com"></div>
+</div>
+<div class="auth-actions">
+  <button onclick="saveSecureConfiguration()">Save Current Settings</button>
+  <button onclick="refreshConfigurations()">Refresh My Settings</button>
+</div>
+<div class="auth-status" id="secureStatus">Sign in to manage secure settings.</div>
+<div class="secure-list" id="configurationList"></div>
+</div>
+
+<div class="panel">
+<h2>Machine Configuration</h2>
+<h3>Select Your Three Rotors</h3>
+<div class="rotors" id="rotors"></div>
+<label>Reflector</label>
+<select id="reflector">
+<option value="A">Reflector A</option>
+<option value="B">Reflector B</option>
+<option value="C">Reflector C</option>
+<option value="D">Reflector D</option>
+<option value="E">Reflector E</option>
+</select>
+<p class="small">Each rotor has a starting position and a ring setting. Ring settings range from 1 to 36.</p>
+<button onclick="emailMachineSettings()">Email Machine Settings</button>
+<p class="small">Creates a text message containing the complete configuration needed to set up another compatible copy of this simulator.</p>
+</div>
+
+<div class="panel">
+<h2>Switchboard</h2>
+<p class="small">Select two characters to connect them. Connected characters are swapped during encryption and decryption. Up to 13 pairs are allowed.</p>
+<div class="status" id="switchStatus">Select your first character.</div>
+<div class="switchboard" id="switchboard"></div>
+<h3>Connections (<span id="connectionCount">0</span>/13)</h3>
+<div class="connections" id="connections"><span class="small">No connections yet.</span></div>
+<button onclick="clearSwitchboard()">Clear Switchboard</button>
+</div>
+
+<div class="panel">
+<h2>Message</h2>
+<label>Input Text</label>
+<textarea id="input" placeholder="Enter your message..."></textarea>
+<button onclick="processMessage('encrypt')">Encrypt</button>
+<button onclick="processMessage('decrypt')">Decrypt</button>
+<button onclick="resetMachine()">Reset Positions</button>
+<button onclick="clearText()">Clear</button>
+<h3>Output</h3>
+<div class="output" id="output"></div>
+<button onclick="copyOutput()">Copy Output</button>
+</div>
+
+<p class="small">Educational Enigma-inspired simulator. Account-protected machine settings are stored in Supabase. This is not a complete historical replica of the original Enigma machine. Letters and digits are processed; spaces and punctuation are preserved.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+let supabaseClient = null;
+
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const SIZE = alphabet.length;
+
+function seededRandom(seed) {
+    let value = seed >>> 0;
+    return function() {
+        value = (value * 1664525 + 1013904223) >>> 0;
+        return value / 4294967296;
+    };
+}
+
+function seededShuffle(text, seed) {
+    const chars = text.split("");
+    const random = seededRandom(seed);
+    for (let i = chars.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join("");
+}
+
+const rotorData = Array.from({length:10}, (_, i) => {
+    const wiring = seededShuffle(alphabet, 1000 + i * 7919);
+    const random = seededRandom(5000 + i * 3571);
+    const notchCount = i < 5 ? 1 : 2;
+    const notches = [];
+    while (notches.length < notchCount) {
+        const candidate = alphabet[Math.floor(random() * SIZE)];
+        if (!notches.includes(candidate)) notches.push(candidate);
+    }
+    return {wiring, notch:notches.join("")};
+});
+
+function makeReflector(seed) {
+    const shuffled = seededShuffle(alphabet, seed).split("");
+    const mapping = Array(SIZE);
+    for (let i = 0; i < SIZE; i += 2) {
+        const a = alphabet.indexOf(shuffled[i]);
+        const b = alphabet.indexOf(shuffled[i + 1]);
+        mapping[a] = shuffled[i + 1];
+        mapping[b] = shuffled[i];
+    }
+    return mapping.join("");
+}
+
+const reflectors = {
+    A: makeReflector(11001),
+    B: makeReflector(22003),
+    C: makeReflector(33007),
+    D: makeReflector(44017),
+    E: makeReflector(55021)
+};
+
+function buildRotors() {
+    const container = document.getElementById("rotors");
+    container.innerHTML = "";
+    for (let i = 0; i < 3; i++) {
+        const div = document.createElement("div");
+        div.className = "rotor";
+        div.innerHTML = `
+            <label>Rotor ${i + 1}</label>
+            <select id="type${i}" onchange="validateRotors()">
+                ${rotorData.map((r,j) => `<option value="${j}">Rotor ${j + 1}</option>`).join("")}
+            </select>
+            <label>Starting Position</label>
+            <input id="position${i}" maxlength="1" value="A" oninput="validatePosition(this)">
+            <label>Ring Setting (1–36)</label>
+            <input id="ring${i}" type="number" min="1" max="36" step="1" value="1" oninput="validateRing(this)">
+        `;
+        container.appendChild(div);
+    }
+    validateRotors();
+}
+
+function validateRotors() {
+    const selections = [0,1,2].map(i => document.getElementById(`type${i}`).value);
+    for (let i = 0; i < 3; i++) {
+        const select = document.getElementById(`type${i}`);
+        const duplicate = selections.some((value,index) => value === selections[i] && index !== i);
+        select.style.borderColor = duplicate ? "red" : "#596477";
+    }
+}
+
+function validatePosition(input) {
+    input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0,1);
+}
+
+function validateRing(input) {
+    if (input.value === "") return;
+    let value = Number(input.value);
+    if (!Number.isFinite(value)) return;
+    value = Math.max(1, Math.min(36, Math.floor(value)));
+    input.value = value;
+}
+
+/* SWITCHBOARD */
+let switchPairs = [];
+let selectedCharacter = null;
+
+function buildSwitchboard() {
+    const board = document.getElementById("switchboard");
+    board.innerHTML = "";
+    for (const character of alphabet) {
+        const button = document.createElement("button");
+        button.className = "socket";
+        button.textContent = character;
+        button.id = `socket${character}`;
+        button.onclick = () => selectSwitchCharacter(character);
+        board.appendChild(button);
+    }
+    updateSwitchboard();
+}
+
+function selectSwitchCharacter(character) {
+    const existingPair = switchPairs.find(pair => pair.includes(character));
+    if (existingPair) {
+        switchPairs = switchPairs.filter(pair => pair !== existingPair);
+        selectedCharacter = null;
+        document.getElementById("switchStatus").textContent =
+            `Removed connection ${existingPair[0]} ↔ ${existingPair[1]}.`;
+        updateSwitchboard();
+        return;
+    }
+    if (selectedCharacter === null) {
+        selectedCharacter = character;
+        document.getElementById("switchStatus").textContent =
+            `Selected ${character}. Now select another character.`;
+        updateSwitchboard();
+        return;
+    }
+    if (selectedCharacter === character) {
+        selectedCharacter = null;
+        document.getElementById("switchStatus").textContent = "Selection cancelled.";
+        updateSwitchboard();
+        return;
+    }
+    if (switchPairs.length >= 13) {
+        selectedCharacter = null;
+        document.getElementById("switchStatus").textContent =
+            "Maximum of 13 connections reached.";
+        updateSwitchboard();
+        return;
+    }
+    switchPairs.push([selectedCharacter, character]);
+    document.getElementById("switchStatus").textContent =
+        `Connected ${selectedCharacter} ↔ ${character}.`;
+    selectedCharacter = null;
+    updateSwitchboard();
+}
+
+function updateSwitchboard() {
+    for (const character of alphabet) {
+        const button = document.getElementById(`socket${character}`);
+        if (!button) continue;
+        const connected = switchPairs.some(pair => pair.includes(character));
+        button.className = "socket";
+        if (connected) button.classList.add("connected");
+        if (character === selectedCharacter) button.classList.add("selected");
+    }
+    document.getElementById("connectionCount").textContent = switchPairs.length;
+    const container = document.getElementById("connections");
+    container.innerHTML = "";
+    if (switchPairs.length === 0) {
+        container.innerHTML = '<span class="small">No connections yet.</span>';
+    }
+    switchPairs.forEach(pair => {
+        const button = document.createElement("button");
+        button.className = "connection";
+        button.textContent = `${pair[0]} ↔ ${pair[1]} ×`;
+        button.onclick = () => {
+            switchPairs = switchPairs.filter(p => p !== pair);
+            selectedCharacter = null;
+            document.getElementById("switchStatus").textContent = "Connection removed.";
+            updateSwitchboard();
+        };
+        container.appendChild(button);
+    });
+}
+
+function clearSwitchboard() {
+    switchPairs = [];
+    selectedCharacter = null;
+    document.getElementById("switchStatus").textContent = "Switchboard cleared.";
+    updateSwitchboard();
+}
+
+/* PLUGBOARD */
+function plugboard(character, pairs) {
+    for (const pair of pairs) {
+        if (character === pair[0]) return pair[1];
+        if (character === pair[1]) return pair[0];
+    }
+    return character;
+}
+
+/* MACHINE CONFIGURATION */
+function getMachine() {
+    const rotors = [];
+    const selected = [];
+    for (let i = 0; i < 3; i++) {
+        const type = Number(document.getElementById(`type${i}`).value);
+        const positionText = document.getElementById(`position${i}`).value.toUpperCase();
+        const ringText = document.getElementById(`ring${i}`).value;
+        if (!alphabet.includes(positionText)) {
+            throw new Error("Every rotor position must be a letter or digit (A-Z, 0-9).");
+        }
+        if (ringText === "" || !Number.isInteger(Number(ringText)) ||
+            Number(ringText) < 1 || Number(ringText) > SIZE) {
+            throw new Error("Every ring setting must be a whole number from 1 to 36.");
+        }
+        if (selected.includes(type)) {
+            throw new Error("You cannot select the same rotor more than once.");
+        }
+        selected.push(type);
+        rotors.push({
+            wiring: rotorData[type].wiring,
+            notch: rotorData[type].notch,
+            position: alphabet.indexOf(positionText),
+            ring: Number(ringText) - 1
+        });
+    }
+    return {
+        rotors,
+        reflector: reflectors[document.getElementById("reflector").value],
+        pairs: switchPairs.map(pair => [...pair])
+    };
+}
+
+/* ROTOR MOVEMENT */
+function displayedNotch(rotor) {
+    return rotor.notch.split("").some(notch => {
+        const notchIndex = alphabet.indexOf(notch);
+        const visibleIndex = (notchIndex + rotor.ring) % SIZE;
+        return rotor.position === visibleIndex;
+    });
+}
+
+function stepRotors(rotors) {
+    const move = [false, false, true];
+    for (let i = 2; i > 0; i--) {
+        if (displayedNotch(rotors[i])) {
+            move[i] = true;
+            move[i - 1] = true;
+        }
+    }
+    for (let i = 0; i < 3; i++) {
+        if (move[i]) rotors[i].position = (rotors[i].position + 1) % SIZE;
+    }
+}
+
+/* ELECTRICAL PATH */
+function forward(character, rotor) {
+    const offset = (rotor.position - rotor.ring + SIZE) % SIZE;
+    const index = (alphabet.indexOf(character) + offset) % SIZE;
+    const mapped = rotor.wiring[index];
+    return alphabet[(alphabet.indexOf(mapped) - offset + SIZE) % SIZE];
+}
+
+function backward(character, rotor) {
+    const offset = (rotor.position - rotor.ring + SIZE) % SIZE;
+    const index = (alphabet.indexOf(character) + offset) % SIZE;
+    const mapped = alphabet[rotor.wiring.indexOf(alphabet[index])];
+    return alphabet[(alphabet.indexOf(mapped) - offset + SIZE) % SIZE];
+}
+
+/* ENIGMA ENCRYPTION / DECRYPTION */
+function encryptLetter(character, machine) {
+    let current = plugboard(character, machine.pairs);
+    for (let i = 2; i >= 0; i--) current = forward(current, machine.rotors[i]);
+    current = machine.reflector[alphabet.indexOf(current)];
+    for (let i = 0; i < 3; i++) current = backward(current, machine.rotors[i]);
+    return plugboard(current, machine.pairs);
+}
+
+/* PROCESS MESSAGE */
+function processMessage(mode) {
+    try {
+        const machine = getMachine();
+        const startingPositions = machine.rotors.map(rotor => rotor.position);
+        const text = document.getElementById("input").value.toUpperCase();
+        let result = "";
+        for (const character of text) {
+            if (alphabet.includes(character)) {
+                stepRotors(machine.rotors);
+                result += encryptLetter(character, machine);
+            } else {
+                result += character;
+            }
+        }
+        document.getElementById("output").textContent = result;
+        machine.rotors.forEach((rotor, i) => {
+            document.getElementById(`position${i}`).value = alphabet[startingPositions[i]];
+        });
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+/* SUPABASE AUTHENTICATION AND SECURE SETTINGS */
+function initializeSupabase() {
+    if (SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL" ||
+        SUPABASE_ANON_KEY === "YOUR_SUPABASE_ANON_KEY") {
+        setAuthStatus("Setup required: add your Supabase project URL and anon key in this file.");
+        return;
+    }
+    if (!window.supabase) {
+        setAuthStatus("Supabase could not load. Check your internet connection.");
+        return;
+    }
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient.auth.getSession().then(({data, error}) => {
+        if (error) setAuthStatus(error.message);
+        else {
+            updateAuthDisplay(data.session);
+            if (data.session) refreshConfigurations();
+        }
+    });
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+        updateAuthDisplay(session);
+        if (session) refreshConfigurations();
+        else {
+            document.getElementById("configurationList").innerHTML = "";
+            setSecureStatus("Sign in to manage secure settings.");
+        }
+    });
+}
+function setAuthStatus(message) {
+    document.getElementById("authStatus").textContent = message;
+}
+function setSecureStatus(message) {
+    document.getElementById("secureStatus").textContent = message;
+}
+function updateAuthDisplay(session) {
+    setAuthStatus(session?.user ? `Signed in as ${session.user.email}` : "Not signed in.");
+    if (session?.user) document.getElementById("accountPassword").value = "";
+}
+async function signUp() {
+    if (!supabaseClient) return alert("Supabase has not been configured yet.");
+    const email = document.getElementById("accountEmail").value.trim();
+    const password = document.getElementById("accountPassword").value;
+    if (!email || !password) return alert("Enter an email address and password.");
+    if (password.length < 8) return alert("Use a password with at least 8 characters.");
+    const {error} = await supabaseClient.auth.signUp({email, password});
+    setAuthStatus(error ? error.message : "Registration submitted. Check your email if confirmation is enabled, then sign in.");
+}
+async function signIn() {
+    if (!supabaseClient) return alert("Supabase has not been configured yet.");
+    const email = document.getElementById("accountEmail").value.trim();
+    const password = document.getElementById("accountPassword").value;
+    if (!email || !password) return alert("Enter your email address and password.");
+    const {error} = await supabaseClient.auth.signInWithPassword({email, password});
+    if (error) setAuthStatus(error.message);
+}
+async function signOut() {
+    if (!supabaseClient) return;
+    const {error} = await supabaseClient.auth.signOut();
+    setAuthStatus(error ? error.message : "Signed out.");
+}
+function getSettingsForStorage() {
+    const machine = getMachine();
+    return {
+        rotorTypes: [0,1,2].map(i => Number(document.getElementById(`type${i}`).value)),
+        positions: machine.rotors.map(rotor => alphabet[rotor.position]),
+        rings: machine.rotors.map(rotor => rotor.ring + 1),
+        reflector: document.getElementById("reflector").value,
+        pairs: machine.pairs.map(pair => [...pair])
+    };
+}
+function applyStoredSettings(settings) {
+    if (!settings || !Array.isArray(settings.rotorTypes) ||
+        !Array.isArray(settings.positions) || !Array.isArray(settings.rings) ||
+        !Array.isArray(settings.pairs)) throw new Error("Saved configuration is invalid.");
+    for (let i = 0; i < 3; i++) {
+        document.getElementById(`type${i}`).value = String(settings.rotorTypes[i]);
+        document.getElementById(`position${i}`).value = settings.positions[i];
+        document.getElementById(`ring${i}`).value = String(settings.rings[i]);
+    }
+    document.getElementById("reflector").value = settings.reflector;
+    switchPairs = settings.pairs.map(pair => [...pair]);
+    selectedCharacter = null;
+    validateRotors();
+    updateSwitchboard();
+    document.getElementById("output").textContent = "";
+}
+async function saveSecureConfiguration() {
+    if (!supabaseClient) return alert("Supabase has not been configured yet.");
+    const {data: {user}} = await supabaseClient.auth.getUser();
+    if (!user) return alert("Sign in before saving a configuration.");
+    const name = document.getElementById("configName").value.trim() || "My Enigma settings";
+    try {
+        const {error} = await supabaseClient.from("machine_configs").insert({
+            owner_id: user.id, name, settings: getSettingsForStorage()
+        });
+        if (error) throw error;
+        setSecureStatus("Configuration saved to your account.");
+        await refreshConfigurations();
+    } catch (error) {
+        setSecureStatus(`Could not save settings: ${error.message}`);
+    }
+}
+async function grantConfigurationAccess(configId) {
+    if (!supabaseClient) return alert("Supabase has not been configured yet.");
+    const email = document.getElementById("grantEmail").value.trim().toLowerCase();
+    if (!email) return alert("Enter the registered user's email first.");
+    const {error} = await supabaseClient.rpc("grant_machine_config_access", {
+        p_config_id: configId, p_email: email
+    });
+    if (error) setSecureStatus(error.message);
+    else {
+        setSecureStatus(`Access granted to ${email}.`);
+        document.getElementById("grantEmail").value = "";
+        await refreshConfigurations();
+    }
+}
+async function revokeConfigurationAccess(configId, email) {
+    const {error} = await supabaseClient.rpc("revoke_machine_config_access", {
+        p_config_id: configId, p_email: email
+    });
+    if (error) setSecureStatus(error.message);
+    else {
+        setSecureStatus(`Access revoked for ${email}.`);
+        await refreshConfigurations();
+    }
+}
+async function refreshConfigurations() {
+    if (!supabaseClient) return;
+    const {data: {user}} = await supabaseClient.auth.getUser();
+    const list = document.getElementById("configurationList");
+    if (!user) { list.innerHTML = ""; return; }
+    const {data, error} = await supabaseClient.from("machine_configs")
+        .select("id,name,owner_id,settings,created_at")
+        .order("created_at", {ascending:false});
+    if (error) { setSecureStatus(`Could not load configurations: ${error.message}`); return; }
+    list.innerHTML = "";
+    if (!data?.length) { list.textContent = "No configurations are available to this account yet."; return; }
+    data.forEach(config => {
+        const card = document.createElement("div");
+        card.className = "secure-item";
+        const title = document.createElement("strong");
+        title.textContent = config.name;
+        const detail = document.createElement("p");
+        detail.className = "small";
+        detail.textContent = config.owner_id === user.id ? "Owned by you" : "Shared with you";
+        const load = document.createElement("button");
+        load.textContent = "Load Settings";
+        load.onclick = () => {
+            try { applyStoredSettings(config.settings); setSecureStatus(`Loaded "${config.name}".`); }
+            catch (error) { setSecureStatus(error.message); }
+        };
+        card.append(title, detail, load);
+        if (config.owner_id === user.id) {
+            const grant = document.createElement("button");
+            grant.textContent = "Grant Access to Email Above";
+            grant.onclick = () => grantConfigurationAccess(config.id);
+            const revokeInput = document.createElement("input");
+            revokeInput.type = "email";
+            revokeInput.placeholder = "Email to revoke";
+            const revoke = document.createElement("button");
+            revoke.textContent = "Revoke Access";
+            revoke.onclick = () => {
+                const email = revokeInput.value.trim().toLowerCase();
+                if (!email) return alert("Enter the email address to revoke.");
+                revokeConfigurationAccess(config.id, email);
+            };
+            card.append(grant, revokeInput, revoke);
+        }
+        list.appendChild(card);
+    });
+}
+
+/* RESET */
+function resetMachine() {
+    document.querySelectorAll(".rotor input[id^='position']").forEach(input => input.value = "A");
+    document.getElementById("output").textContent = "";
+}
+
+/* CLEAR TEXT */
+function clearText() {
+    document.getElementById("input").value = "";
+    document.getElementById("output").textContent = "";
+}
+
+/* COPY OUTPUT */
+function copyOutput() {
+    const output = document.getElementById("output").textContent;
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(output).catch(() => alert("Clipboard access was unavailable."));
+    } else {
+        const temporary = document.createElement("textarea");
+        temporary.value = output;
+        document.body.appendChild(temporary);
+        temporary.select();
+        document.execCommand("copy");
+        temporary.remove();
+    }
+}
+
+buildRotors();
+buildSwitchboard();
+initializeSupabase();
+</script>
+</body>
+</html>
